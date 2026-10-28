@@ -27,8 +27,6 @@ wheels/
 # Django
 *.log
 local_settings.py
-db.sqlite3
-db.sqlite3-journal
 media/
 staticfiles/
 
@@ -58,8 +56,15 @@ frontend/.env.local
 /*.jpg
 public/assets/aistudio/
 
-# Always keep database and safe backups in repository
+# Always keep ALL databases, survey answers, fixtures, and safe backups in GitHub
+!*.sqlite3
+!db.sqlite3
+!server/data/**
 !server/data/db.json
+!server/data/fixtures.json
+!server/data/fixtures/**
+!server/data/workload_input/**
+!server/data/backups/**
 !server/data/backups/db_LATEST_SAFE_BACKUP.json
 !server/data/backups/student_surveys_LATEST_SAFE.json
-
+!public/fixtures/**

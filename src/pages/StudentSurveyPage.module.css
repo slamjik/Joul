@@ -1,0 +1,357 @@
+.container {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 16px 20px 160px 20px;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 12px 12px 170px 12px;
+  }
+}
+
+.headerRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.brandBadge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #1a56db;
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.heroCard {
+  border-radius: 16px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.05);
+  margin-bottom: 24px;
+  border: 1px solid #e2e8f0;
+}
+
+.heroHeader {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.heroIconWrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a56db;
+  flex-shrink: 0;
+}
+
+.heroTitle {
+  margin: 0 !important;
+  color: #0f172a;
+  font-size: 20px !important;
+  line-height: 1.3 !important;
+}
+
+@media (max-width: 640px) {
+  .heroTitle {
+    font-size: 17px !important;
+  }
+  .heroIconWrapper {
+    width: 40px;
+    height: 40px;
+  }
+}
+
+.semesterSelector {
+  display: flex;
+  flex-wrap: wrap;
+  background: #f1f5f9;
+  border-radius: 12px;
+  padding: 4px;
+  gap: 6px;
+  border: 1px solid #e2e8f0;
+  max-width: 100%;
+}
+
+.semesterBtn {
+  flex: 1 1 160px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  font-weight: 600;
+  font-size: 14px;
+  transition: all 0.2s ease;
+  text-align: center;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.semesterBtnActive {
+  background-color: #1a56db;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(26, 86, 219, 0.25);
+}
+
+.semesterBtnInactive {
+  background-color: transparent;
+  color: #475569;
+}
+
+.semesterBtnInactive:hover {
+  color: #0f172a;
+  background-color: rgba(255, 255, 255, 0.6);
+}
+
+/* ─── Сетка каскадных селекторов ─── */
+.selectorsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-top: 10px;
+}
+
+@media (max-width: 860px) {
+  .selectorsGrid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+}
+
+.selectorItem {
+  min-width: 0;
+}
+
+.selectorLabel {
+  font-size: 12px;
+  color: #64748b;
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+/* ─── Информационная карточка выбранного преподавателя ─── */
+.selectedTeacherCard {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-top: 20px;
+  box-sizing: border-box;
+}
+
+@media (max-width: 768px) {
+  .selectedTeacherCard {
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 14px;
+    gap: 14px;
+  }
+}
+
+.teacherMainCol {
+  flex: 1;
+  min-width: 0;
+}
+
+.teacherName {
+  font-size: 17px;
+  font-weight: 700;
+  color: #0f172a;
+  line-height: 1.35;
+  margin-bottom: 6px;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .teacherName {
+    font-size: 16px;
+  }
+}
+
+.teacherMetaTags {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.teacherSubInfo {
+  color: #64748b;
+  font-size: 13px;
+  line-height: 1.5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+.dividerDot {
+  color: #cbd5e1;
+}
+
+.progressSideCol {
+  flex-shrink: 0;
+  text-align: right;
+  min-width: 140px;
+}
+
+@media (max-width: 768px) {
+  .progressSideCol {
+    text-align: left;
+    border-top: 1px dashed #e2e8f0;
+    padding-top: 10px;
+    width: 100%;
+  }
+}
+
+/* ─── Карточки 5 блоков качества ─── */
+.blockCard {
+  border-radius: 14px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+  margin-bottom: 20px;
+  transition: all 0.2s ease;
+}
+
+.blockHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.blockTitleGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex: 1;
+  min-width: 0;
+}
+
+.blockIconBox {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: #eff6ff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #1a56db;
+  flex-shrink: 0;
+}
+
+.blockTitle {
+  margin: 0 !important;
+  color: #1e293b;
+  font-size: 15px !important;
+  line-height: 1.35 !important;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+@media (max-width: 640px) {
+  .blockTitle {
+    font-size: 14px !important;
+  }
+}
+
+.standardQuote {
+  font-size: 13px;
+  line-height: 1.55;
+  color: #475569;
+  background-color: #f8fafc;
+  border-left: 4px solid #1a56db;
+  padding: 10px 14px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 14px;
+  word-break: normal;
+  overflow-wrap: break-word;
+}
+
+.ratingButtonsGrid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+  .ratingButtonsGrid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+}
+
+.ratingBtn {
+  padding: 12px 14px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.18s ease;
+  min-height: 46px;
+  box-sizing: border-box;
+  text-align: center;
+}
+
+/* ─── Плавающая панель отправки внизу ─── */
+.stickySubmitBar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background-color: rgba(255, 255, 255, 0.98);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-top: 1px solid #e2e8f0;
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  padding: 12px 16px;
+  padding-bottom: max(12px, env(safe-area-inset-bottom, 12px));
+  z-index: 1000;
+}
+
+.stickyInner {
+  max-width: 960px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+@media (max-width: 640px) {
+  .stickyInner {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .stickySubmitBtn {
+    width: 100% !important;
+  }
+}

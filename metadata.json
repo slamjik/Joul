@@ -1,0 +1,7 @@
+{
+  "name": "КафИС — Информационная система кафедры",
+  "description": "Информационная система планирования и мониторинга деятельности кафедры ГиСЭН НФ НИТУ МИСИС",
+  "version": "1.0.0",
+  "permissions": [],
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

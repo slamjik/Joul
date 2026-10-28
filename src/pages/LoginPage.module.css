@@ -1,0 +1,98 @@
+.container {
+  display: flex;
+  min-height: 100vh;
+  width: 100vw;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--color-bg);
+  padding: 20px;
+}
+
+.card {
+  width: 100%;
+  max-width: 420px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 36px 32px;
+  box-shadow: var(--shadow-md);
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.logoTitle {
+  font-size: 26px;
+  font-weight: 700;
+  color: var(--color-primary);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  letter-spacing: -0.5px;
+}
+
+.subtitle {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  margin-top: 6px;
+  line-height: 1.4;
+}
+
+.studentBanner {
+  margin-top: 22px;
+  padding: 16px;
+  background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
+  border: 1px solid #86efac;
+  border-radius: var(--radius-md);
+  text-align: center;
+}
+
+.studentBannerHeader {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.studentBannerTitle {
+  font-size: 15px;
+  font-weight: 700;
+  color: #15803d;
+}
+
+.studentBannerText {
+  font-size: 13px;
+  color: #166534;
+  line-height: 1.45;
+  margin-bottom: 12px;
+}
+
+.studentSurveyBtn {
+  background-color: #16a34a !important;
+  border-color: #16a34a !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  font-size: 14px !important;
+  height: 42px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 2px 6px rgba(22, 163, 74, 0.25) !important;
+  transition: all 0.2s ease !important;
+}
+
+.studentSurveyBtn:hover {
+  background-color: #15803d !important;
+  border-color: #15803d !important;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(22, 163, 74, 0.35) !important;
+}
+
+.footer {
+  text-align: center;
+  margin-top: 24px;
+  font-size: var(--font-size-xs);
+  color: var(--color-text-muted);
+}

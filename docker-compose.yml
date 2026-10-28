@@ -1,0 +1,26 @@
+version: '3.8'
+
+services:
+  kafis-server:
+    container_name: kafis_misis_server
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: always
+    ports:
+      - "3000:3000"
+      - "80:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+    volumes:
+      # Постоянное хранение базы данных (db.json) и резервных копий на диске Windows
+      - ./server/data:/app/server/data
+    # Автоконтроль оперативной памяти (не более 2.5 ГБ)
+    mem_limit: 2560m
+    # Авторотация системных логов контейнера (не более 250 МБ суммарно, чтобы никогда не засорить диск)
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "50m"
+        max-file: "5"

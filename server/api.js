@@ -8,9 +8,68 @@ import XLSX from 'xlsx'
 import multer from 'multer'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
-const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 15 * 1024 * 1024 } })
+const ALLOWED_UPLOAD_EXTENSIONS = new Set(['.xlsx', '.xls', '.csv', '.json'])
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 15 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    const ext = path.extname(String(file.originalname || '')).toLowerCase()
+    if (!ext || ALLOWED_UPLOAD_EXTENSIONS.has(ext)) {
+      cb(null, true)
+    } else {
+      cb(new Error('Недопустимый формат файла. Разрешены только .xlsx, .xls, .csv, .json'))
+    }
+  },
+})
 
 export const apiApp = express()
+apiApp.disable('x-powered-by')
+
+// Web Security Headers & Input Protection
+apiApp.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff')
+  res.setHeader('X-XSS-Protection', '1; mode=block')
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  next()
+})
+
+// Защита от XSS и инъекций при генерации HTML/PDF отчетов и приеме отзывов
+function escapeHtml(unsafe) {
+  return String(unsafe ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+function sanitizeSafeFilenamePart(raw) {
+  return String(raw || '2026-1').replace(/[^a-zA-Z0-9._-]/g, '_')
+}
+
+function sanitizeTextInput(raw, maxLen = 2000) {
+  if (!raw) return null
+  const cleaned = String(raw)
+    .replace(/<\s*\/?\s*(script|iframe|object|embed|style|link|meta)[^>]*>/gi, '')
+    .replace(/javascript\s*:/gi, '')
+    .replace(/on\w+\s*=/gi, '')
+    .trim()
+  return cleaned ? cleaned.slice(0, maxLen) : null
+}
+
+// In-memory Rate Limiter (защита от брутфорса паролей и спам-атак)
+const rateLimitBuckets = new Map()
+function checkRateLimit(key, maxRequests, windowMs) {
+  const now = Date.now()
+  const entry = rateLimitBuckets.get(key)
+  if (!entry || now > entry.resetAt) {
+    rateLimitBuckets.set(key, { count: 1, resetAt: now + windowMs })
+    return true
+  }
+  entry.count += 1
+  return entry.count <= maxRequests
+}
 
 apiApp.use(cors())
 apiApp.use(express.json({ limit: '15mb' }))
@@ -477,61 +536,73 @@ function getFixtureSyntheticAnswers() {
 }
 
 function loadDatabase() {
-  // Check if persistent db.json exists with our entities
+  // Check if persistent db.json (or latest safe backup) exists with our entities
   let loadedFromDb = false
-  if (fs.existsSync(dbFilePath)) {
-    try {
-      const savedDb = JSON.parse(fs.readFileSync(dbFilePath, 'utf-8'))
-      if (savedDb && savedDb.teachers && savedDb.teachers.length > 0) {
-        departments = savedDb.departments || []
-        studyGroups = savedDb.studyGroups || []
-        disciplines = savedDb.disciplines || []
-        teachers = savedDb.teachers || []
-        workloads = savedDb.workloads || []
-        students = savedDb.students || []
-        grades = savedDb.grades || []
-        surveyTemplates = savedDb.surveyTemplates || []
-        surveyQuestions = savedDb.surveyQuestions || []
-        surveyAssignments = savedDb.surveyAssignments || []
-        const needsScoreMigration = savedDb.scoringVersion !== 2
-        // Студенческие реальные ответы (с автоматической миграцией на шкалу V2: 0 / 0.25 / 0.5 / 1)
-        surveyAnswers = (savedDb.surveyAnswers || []).map((a) =>
-          migrateAnswerToV2Scale({
-            ...a,
-            source: 'student',
-            is_synthetic: false,
-          })
-        )
-        // Синтетические данные
-        if (
-          savedDb.syntheticSurveyAnswers &&
-          Array.isArray(savedDb.syntheticSurveyAnswers) &&
-          savedDb.syntheticSurveyAnswers.length > 0
-        ) {
-          syntheticSurveyAnswers = savedDb.syntheticSurveyAnswers.map((a) =>
+  const dbCandidatePaths = [
+    dbFilePath,
+    path.join(backupsDir, 'db_LATEST_SAFE_BACKUP.json'),
+  ]
+  for (const candidatePath of dbCandidatePaths) {
+    if (loadedFromDb) break
+    if (fs.existsSync(candidatePath)) {
+      try {
+        const savedDb = JSON.parse(fs.readFileSync(candidatePath, 'utf-8'))
+        if (savedDb && savedDb.teachers && savedDb.teachers.length > 0) {
+          departments = savedDb.departments || []
+          studyGroups = savedDb.studyGroups || []
+          disciplines = savedDb.disciplines || []
+          teachers = savedDb.teachers || []
+          workloads = savedDb.workloads || []
+          students = savedDb.students || []
+          grades = savedDb.grades || []
+          surveyTemplates = savedDb.surveyTemplates || []
+          surveyQuestions = savedDb.surveyQuestions || []
+          surveyAssignments = savedDb.surveyAssignments || []
+          const needsScoreMigration = savedDb.scoringVersion !== 2
+          // Студенческие реальные ответы (с автоматической миграцией на шкалу V2: 0 / 0.25 / 0.5 / 1)
+          surveyAnswers = (savedDb.surveyAnswers || []).map((a) =>
             migrateAnswerToV2Scale({
               ...a,
-              source: 'synthetic',
-              is_synthetic: true,
+              source: 'student',
+              is_synthetic: false,
             })
           )
-        } else {
-          // Инициализация синтетических данных из фикстур, не затрагивая ответы студентов
-          syntheticSurveyAnswers = getFixtureSyntheticAnswers()
+          // Синтетические данные
+          if (
+            savedDb.syntheticSurveyAnswers &&
+            Array.isArray(savedDb.syntheticSurveyAnswers) &&
+            savedDb.syntheticSurveyAnswers.length > 0
+          ) {
+            syntheticSurveyAnswers = savedDb.syntheticSurveyAnswers.map((a) =>
+              migrateAnswerToV2Scale({
+                ...a,
+                source: 'synthetic',
+                is_synthetic: true,
+              })
+            )
+          } else {
+            // Инициализация синтетических данных из фикстур, не затрагивая ответы студентов
+            syntheticSurveyAnswers = getFixtureSyntheticAnswers()
+          }
+          teacherRecommendations = savedDb.teacherRecommendations || []
+          auditLogs = savedDb.auditLogs || []
+          users = savedDb.users || []
+          loadedFromDb = true
+          if (
+            candidatePath !== dbFilePath ||
+            needsScoreMigration ||
+            !savedDb.syntheticSurveyAnswers ||
+            savedDb.syntheticSurveyAnswers.length === 0
+          ) {
+            persistDb()
+          }
+          console.log(
+            `[DB] Successfully loaded state from ${candidatePath} (${surveyAnswers.length} student answers, ${syntheticSurveyAnswers.length} synthetic, ${teachers.length} teachers, V2 scoring active)`
+          )
         }
-        teacherRecommendations = savedDb.teacherRecommendations || []
-        auditLogs = savedDb.auditLogs || []
-        users = savedDb.users || []
-        loadedFromDb = true
-        if (needsScoreMigration || !savedDb.syntheticSurveyAnswers || savedDb.syntheticSurveyAnswers.length === 0) {
-          persistDb()
-        }
-        console.log(
-          `[DB] Successfully loaded state from ${dbFilePath} (${surveyAnswers.length} student answers, ${syntheticSurveyAnswers.length} synthetic, ${teachers.length} teachers, V2 scoring active)`
-        )
+      } catch (e) {
+        console.error(`[DB] Failed to parse ${candidatePath}, trying next candidate:`, e)
       }
-    } catch (e) {
-      console.error('[DB] Failed to parse db.json, falling back to fixtures:', e)
     }
   }
 
@@ -747,9 +818,13 @@ function getDirectorySizeBytes(dirPath) {
 function rotateBackups(maxCount = MAX_BACKUPS_COUNT) {
   try {
     if (!fs.existsSync(backupsDir)) return
+    const protectedFiles = new Set([
+      'db_LATEST_SAFE_BACKUP.json',
+      'student_surveys_LATEST_SAFE.json',
+    ])
     const files = fs
       .readdirSync(backupsDir)
-      .filter((f) => f.endsWith('.json'))
+      .filter((f) => f.endsWith('.json') && !protectedFiles.has(f))
       .map((f) => {
         const full = path.join(backupsDir, f)
         const stat = fs.statSync(full)
@@ -911,6 +986,10 @@ if (cloudSyncTimer && typeof cloudSyncTimer.unref === 'function') {
 const maintenanceTimer = setInterval(() => {
   try {
     syncFromCloudRunInstance(true)
+    const now = Date.now()
+    for (const [k, v] of rateLimitBuckets.entries()) {
+      if (now > v.resetAt) rateLimitBuckets.delete(k)
+    }
     if (auditLogs.length > MAX_AUDIT_LOGS) {
       auditLogs = auditLogs.slice(0, MAX_AUDIT_LOGS)
       persistDb()
@@ -1044,6 +1123,11 @@ function getRequestUser(req) {
 }
 
 apiApp.post('/auth/login/', (req, res) => {
+  const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1'
+  if (!checkRateLimit(`login_${clientIp}`, 30, 60 * 1000)) {
+    return res.status(429).json({ detail: 'Слишком много попыток входа. Пожалуйста, подождите 1 минуту.' })
+  }
+
   const { username, password } = req.body
   const cleanUsername = String(username || '').trim()
   const found = users.find(
@@ -1085,6 +1169,21 @@ apiApp.post('/auth/login/', (req, res) => {
     access: `token_${found.username}_${Date.now()}`,
     refresh: `refresh_${found.username}_${Date.now()}`,
     user: userPayload,
+  })
+})
+
+apiApp.post('/auth/refresh/', (req, res) => {
+  const { refresh } = req.body || {}
+  if (!refresh || typeof refresh !== 'string') {
+    return res.status(401).json({ detail: 'Отсутствует refresh-токен' })
+  }
+  const raw = refresh.replace(/^refresh_/, '')
+  const lastUnderscore = raw.lastIndexOf('_')
+  const uname = lastUnderscore > 0 ? raw.substring(0, lastUnderscore) : 'head'
+  const matched = users.find((u) => u.username === uname) || users[0]
+  return res.json({
+    access: `token_${matched.username}_${Date.now()}`,
+    refresh: `refresh_${matched.username}_${Date.now()}`,
   })
 })
 
@@ -2449,9 +2548,14 @@ apiApp.get('/surveys/assignments/cascading-options/', (req, res) => {
 })
 
 apiApp.post('/surveys/submit/', (req, res) => {
+  const clientIp = req.headers['x-forwarded-for'] || req.socket?.remoteAddress || '127.0.0.1'
+  if (!checkRateLimit(`survey_submit_${clientIp}`, 120, 60 * 1000)) {
+    return res.status(429).json({ error: 'Слишком много отправок с одного адреса. Подождите немного.' })
+  }
+
   const { assignment_id, answers } = req.body
   const assignment = surveyAssignments.find((a) => a.id === Number(assignment_id))
-  if (!assignment_id || !Array.isArray(answers) || answers.length === 0) {
+  if (!assignment_id || !Array.isArray(answers) || answers.length === 0 || answers.length > 25) {
     return res.status(400).json({ error: 'Неверный формат данных опроса' })
   }
 
@@ -2482,9 +2586,9 @@ apiApp.post('/surveys/submit/', (req, res) => {
       question: Number(ans.question_id || 1),
       score: computedScore,
       score_version: 2,
-      choice: ans.choice || null,
-      defects_count: ans.defects_count !== undefined ? Number(ans.defects_count) : null,
-      text_response: ans.text_response ? String(ans.text_response).trim() : null,
+      choice: ans.choice ? String(ans.choice).slice(0, 32) : null,
+      defects_count: ans.defects_count !== undefined ? Math.max(0, Math.min(20, Number(ans.defects_count) || 0)) : null,
+      text_response: sanitizeTextInput(ans.text_response, 2000),
       submission_hash: submissionHash,
       created_at: new Date().toISOString(),
       source: 'student',
@@ -3127,13 +3231,16 @@ apiApp.post('/surveys/restore-synthetic/', (req, res) => {
   })
 })
 
-// Очистить только ответы студентов (если требуется очистить тестовые прогоны студентов)
+// Очистить только ответы студентов (с обязательным созданием страховочной копии перед очисткой)
 apiApp.post('/surveys/clear-student/', (req, res) => {
   const prevCount = surveyAnswers.length
+  if (prevCount > 0) {
+    createDatabaseBackup('pre_clear_student_safety')
+  }
   surveyAnswers = []
   persistDb()
   logAudit(
-    req.user || { id: 1, username: 'head' },
+    getRequestUser(req),
     'DELETE',
     'StudentSurveyAnswer',
     'ALL',
@@ -3144,7 +3251,7 @@ apiApp.post('/surveys/clear-student/', (req, res) => {
   res.json({
     status: 'success',
     cleared_count: prevCount,
-    message: `Реальные ответы студентов (${prevCount} ответов) успешно очищены.`,
+    message: `Реальные ответы студентов (${prevCount} ответов) успешно очищены (создана страховочная резервная копия).`,
   })
 })
 
@@ -3154,6 +3261,10 @@ apiApp.post(['/surveys/reset-answers/', '/surveys/clear-answers/'], (req, res) =
   let msg = ''
   let clearedStudent = 0
   let clearedSynthetic = 0
+
+  if (surveyAnswers.length > 0 && (target === 'student' || target === 'all')) {
+    createDatabaseBackup('pre_reset_safety')
+  }
 
   if (target === 'student') {
     clearedStudent = surveyAnswers.length
@@ -3173,7 +3284,7 @@ apiApp.post(['/surveys/reset-answers/', '/surveys/clear-answers/'], (req, res) =
 
   persistDb()
   logAudit(
-    req.user || { id: 1, username: 'head' },
+    getRequestUser(req),
     'DELETE',
     'SurveyAnswer',
     target,
@@ -3265,7 +3376,7 @@ apiApp.post('/surveys/comments/:id/moderate/', (req, res) => {
 // 8. Reports API (Excel & HTML/PDF)
 // =========================================================================
 apiApp.get('/reports/workload-excel/', (req, res) => {
-  const semester = req.query.semester || '2026-1'
+  const semester = sanitizeSafeFilenamePart(req.query.semester || '2026-1')
   const list = workloads.map(enrichWorkload)
 
   const rows = list.map((w, i) => ({
@@ -3292,7 +3403,7 @@ apiApp.get('/reports/workload-excel/', (req, res) => {
 })
 
 apiApp.get('/reports/workload-pdf/', (req, res) => {
-  const semester = req.query.semester || '2026-1'
+  const semester = escapeHtml(req.query.semester || '2026-1')
   const list = workloads.slice(0, 30).map(enrichWorkload)
   const html = `<!DOCTYPE html>
 <html>
@@ -3330,12 +3441,12 @@ apiApp.get('/reports/workload-pdf/', (req, res) => {
           (w, idx) => `
         <tr>
           <td>${idx + 1}</td>
-          <td>${w.teacher_name}</td>
-          <td>${w.discipline_name}</td>
-          <td>${w.group_name}</td>
-          <td>${w.room}</td>
-          <td>${w.hours_plan}</td>
-          <td>${w.hours_fact}</td>
+          <td>${escapeHtml(w.teacher_name)}</td>
+          <td>${escapeHtml(w.discipline_name)}</td>
+          <td>${escapeHtml(w.group_name)}</td>
+          <td>${escapeHtml(w.room)}</td>
+          <td>${escapeHtml(w.hours_plan)}</td>
+          <td>${escapeHtml(w.hours_fact)}</td>
         </tr>
       `
         )
@@ -3353,7 +3464,7 @@ apiApp.get('/reports/workload-pdf/', (req, res) => {
 })
 
 apiApp.get('/reports/grades-excel/', (req, res) => {
-  const semester = req.query.semester || '2026-1'
+  const semester = sanitizeSafeFilenamePart(req.query.semester || '2026-1')
   const list = grades.map(enrichGrade)
 
   const rows = list.map((g, i) => ({
@@ -3379,7 +3490,7 @@ apiApp.get('/reports/grades-excel/', (req, res) => {
 })
 
 apiApp.get('/reports/grades-pdf/', (req, res) => {
-  const semester = req.query.semester || '2026-1'
+  const semester = escapeHtml(req.query.semester || '2026-1')
   const list = grades.slice(0, 30).map(enrichGrade)
   const html = `<!DOCTYPE html>
 <html>
@@ -3417,12 +3528,12 @@ apiApp.get('/reports/grades-pdf/', (req, res) => {
           (g, idx) => `
         <tr>
           <td>${idx + 1}</td>
-          <td>${g.student_name}</td>
-          <td>${g.student_group_name}</td>
-          <td>${g.discipline_name}</td>
-          <td>${g.teacher_name}</td>
-          <td class="grade-badge">${g.grade}</td>
-          <td>${g.source_display}</td>
+          <td>${escapeHtml(g.student_name)}</td>
+          <td>${escapeHtml(g.student_group_name)}</td>
+          <td>${escapeHtml(g.discipline_name)}</td>
+          <td>${escapeHtml(g.teacher_name)}</td>
+          <td class="grade-badge">${escapeHtml(g.grade)}</td>
+          <td>${escapeHtml(g.source_display)}</td>
         </tr>
       `
         )

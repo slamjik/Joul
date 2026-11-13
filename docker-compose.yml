@@ -9,15 +9,17 @@ services:
     restart: always
     ports:
       - "3000:3000"
-      - "80:3000"
     environment:
       - NODE_ENV=production
       - PORT=3000
+      - UV_THREADPOOL_SIZE=4
     volumes:
       # Постоянное хранение базы данных (db.json) и резервных копий на диске Windows
       - ./server/data:/app/server/data
-    # Автоконтроль оперативной памяти (не более 2.5 ГБ)
+    # Автоконтроль оперативной памяти (не более 2.5 ГБ) и процессора (не более 2 ядер CPU)
     mem_limit: 2560m
+    memswap_limit: 2560m
+    cpus: 2.0
     # Авторотация системных логов контейнера (не более 250 МБ суммарно, чтобы никогда не засорить диск)
     logging:
       driver: "json-file"

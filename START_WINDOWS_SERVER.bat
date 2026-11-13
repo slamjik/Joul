@@ -9,7 +9,7 @@ title КафИС — Полное автоматическое разверты�
 net session >nul 2>&1
 if %errorLevel% neq 0 (
     echo [КафИС] Запрос прав Администратора для автоматической настройки сети Wi-Fi и запуска сервера...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -WorkingDirectory '%~dp0' -Verb RunAs"
+    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
     exit /b
 )
 
@@ -151,6 +151,7 @@ echo ===========================================================================
 start http://localhost:3000
 
 :watchdog_loop
+set UV_THREADPOOL_SIZE=4
 node --expose-gc --max-old-space-size=2048 server.js
 echo [КафИС] Перезапуск сервера через 3 секунды...
 timeout /t 3 /nobreak >nul

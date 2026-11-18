@@ -8,9 +8,12 @@ title КафИС — Полное автоматическое разверты�
 :: ============================================================================
 net session >nul 2>&1
 if %errorLevel% neq 0 (
-    echo [КафИС] Запрос прав Администратора для автоматической настройки сети Wi-Fi и запуска сервера...
-    powershell -NoProfile -ExecutionPolicy Bypass -Command "Start-Process -FilePath '%~f0' -Verb RunAs"
-    exit /b
+    if not "%~1"=="--no-admin-fallback" (
+        echo [КафИС] Запрос прав Администратора для автонастройки сети Wi-Fi и Брандмауэра Windows...
+        powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Start-Process -FilePath '%~f0' -ArgumentList '--no-admin-fallback' -Verb RunAs -ErrorAction Stop; exit 0 } catch { exit 1 }"
+        if !errorLevel! equ 0 exit /b
+        echo [!] Права Администратора не выданы — продолжаем запуск в обычном режиме пользователя...
+    )
 )
 
 cd /d "%~dp0"
